@@ -81,7 +81,18 @@ $$
 $$
 
 ```r
-#fill the code
+#Daily Return Calculations for AMD
+df$DailyReturn_AMD <- c(NA,diff(df$AMD)/df$AMD[-length(df$AMD)])
+
+#Checking calculations
+head(paste("AMD daily returns:",df$DailyReturn_AMD))
+
+#Daily Return Calculations for S&P 500
+df$DailyReturn_GSPC <- c(NA,diff(df$GSPC)/df$GSPC[-length(df$GSPC)])
+
+#Checking calculations
+head(paste("S&P 500 daily returns:",df$DailyReturn_GSPC))
+
 ```
 
 - **Calculate Risk-Free Rate**: Calculate the daily risk-free rate by conversion of annual risk-free Rate. This conversion accounts for the compounding effect over the days of the year and is calculated using the formula:
@@ -91,21 +102,42 @@ $$
 $$
 
 ```r
-#fill the code
+#Finding the Daily Risk-Free Rate
+RF_Daily <- (1+df$RF/100)^(1/360)-1
+
+#Rate Value
+head(paste("Daily Risk-Free Rate (Daily compounding):", RF_Daily))
 ```
 
 
 - **Calculate Excess Returns**: Compute the excess returns for AMD and the S&P 500 by subtracting the daily risk-free rate from their respective returns.
 
 ```r
-#fill the code
+#Finding Excess Returns of AMD
+df$ExcessReturn_AMD <- df$DailyReturn_AMD - RF_Daily
+
+#AMD Excess Returns
+head(paste("AMD Excess Returns:",df$ExcessReturn_AMD))
+
+#Finding Excess Return of S&P 500
+df$ExcessReturn_GSPC <-  df$DailyReturn_GSPC - RF_Daily
+
+#S&P 500 Excess Returns
+head(paste("S&P 500 Excess Returns:",df$ExcessReturn_GSPC))
 ```
 
 
 - **Perform Regression Analysis**: Using linear regression, we estimate the beta (\(\beta\)) of AMD relative to the S&P 500. Here, the dependent variable is the excess return of AMD, and the independent variable is the excess return of the S&P 500. Beta measures the sensitivity of the stock's returns to fluctuations in the market.
 
 ```r
-#fill the code
+# Regression Analysis AMD relative to S&P 500
+lm_result <- lm(ExcessReturn_AMD ~ ExcessReturn_GSPC, data=df)
+
+#Estimating Beta of AMD
+Beta_AMD <- coef(lm_result) [2]
+
+#Printing beta coefficient
+print(paste("Beta coefficient of AMD relative to S&P 500:", Beta_AMD))
 ```
 
 
@@ -114,13 +146,28 @@ $$
 What is your \(\beta\)? Is AMD more volatile or less volatile than the market?
 
 **Answer:**
-
+My calculated beta coefficient for AMD relative to S&P 500 is 1.57 (3 sig fig). As the beta coefficient is greater than 1, this suggests that AMD stocks are more volatile than the market. This means that the stocks will be more sensitive in response to market prices fluctuatations, which leaves a great potential for loss.These market flucuations are based on various factors such as, macroeconomic and industry dynamics affecting the assets values of AMD, hence, higher senstivity to market changes becomes risky. Thus, AMD stocks are more risky to invest in compared to the market. As a result of the high volatile nature of AMD, this means that when there is a market upswing, the potential return on AMD stocks will be greater, and will conversly be significantly lower during a market downturn.
 
 #### Plotting the CAPM Line
 Plot the scatter plot of AMD vs. S&P 500 excess returns and add the CAPM regression line.
 
 ```r
-#fill the code
+#Data
+data <- df
+
+#Removing NA values 
+df <- df[complete.cases(df$ExcessReturn_AMD,df$ExcessReturn_GSPC), ]
+
+#Plotting the scatter plot for AMD ~ S&P 500 and the regression line
+ggplot(df, aes(x = ExcessReturn_GSPC, y = ExcessReturn_AMD)) +
+  geom_point(color="orange") +  # Add points for each data point
+  geom_abline(intercept = 0, slope = Beta_AMD, color = "blue") +  # Add CAPM regression line
+  labs(
+    title = "CAPM: AMD vs. S&P 500 Excess Returns",
+    x = "S&P 500 Excess Returns",
+    y = "AMD Excess Returns"
+  ) +
+  theme_minimal()
 ```
 
 ### Step 3: Predictions Interval
@@ -129,7 +176,29 @@ Suppose the current risk-free rate is 5.0%, and the annual expected return for t
 
 
 **Answer:**
+The 90% prediction interval is a measure of the expected annual return range by analysising the historical data. From calculations, the 90% prediction interval suggests that the investment's annual return range will be around -49% to 85% with 90% confidence. Due to the wide range between the interval, this indicates that there is a high level of uncertainity and potential volatility for AMD stock returns. Hence, this is an indication that there is a higher risk associated with investing in AMD, but as a result, there is a potential for a higher yield in annual return.
 
 ```r
-#fill the code
+#Given values 
+rf_annual <- 0.05 #5% current risk-free rate
+market_return_annual <- 0.133 #S&P 500 annual expected return
+beta <- Beta_AMD #Beta coefficient of AMD 
+
+#Calculating expected return of AMD
+Expected_Return_AMD <- rf_annual + beta * (market_return_annual - rf_annual)
+
+ExpectedDaily_Return_AMD <- Expected_Return_AMD/360 #conversion into days
+
+#Calculating the Standard Error of Forecast
+s_f <- sqrt(summary(lm_result)$sigma^2)
+
+#Converting Daily Standard Error to Annual Standard Error for prediction
+s_p <- s_f * sqrt(252)
+
+#Calculating the 90% interval by setting up the bounds
+upper_bound <- Expected_Return_AMD + qnorm(0.95)*s_p
+lower_bound <- Expected_Return_AMD - qnorm(0.95)*s_p
+
+#Interval 
+print(paste("90% Prediction Interval for AMD's Annual Expected Return: [", lower_bound, ",", upper_bound, "]"))
 ```
